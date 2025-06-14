@@ -1,6 +1,9 @@
 #!/usr/bin/env zsh
 set -eux
 
+# Prevent macOS from sleeping while this script runs
+caffeinate -dimsu -w $$ &
+
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 notify() {
