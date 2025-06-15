@@ -50,7 +50,15 @@ file is produced.
 ./macos-test.sh
 ```
 
-Run it on a Mac with `ffmpeg` and zsh available.
+For Linux or CI environments, `tests/test_shortcuts.sh` provides a similar test
+using mocked macOS utilities. It generates its own video samples so no input
+files are required.
+
+```bash
+./tests/test_shortcuts.sh
+```
+
+Run the scripts on a system with `ffmpeg` and `zsh` available.
 
 ## License
 This project is available under the [MIT License](LICENSE).
