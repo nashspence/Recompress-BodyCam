@@ -23,8 +23,8 @@ creation_epoch_for() {
   local meta
   meta=$(ffprobe -v quiet -show_entries format_tags=creation_time -of default=noprint_wrappers=1:nokey=1 "$f" 2>/dev/null | head -n 1 || true)
   if [[ -n "$meta" ]]; then
-    meta="${meta%Z}"
-    meta="${meta%.*}"
+    # Strip fractional seconds but keep the timezone (Z or +hh:mm)
+    meta=$(echo "$meta" | sed -E 's/\.[0-9]+(Z|[+-][0-9:]+)$/\1/')
     if date -j -f "%Y-%m-%dT%H:%M:%S%z" "$meta" +%s 2>/dev/null; then
       return
     fi
