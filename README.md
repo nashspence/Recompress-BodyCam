@@ -8,7 +8,7 @@ A macOS Shortcuts Quick Action that re‑encodes body camera footage using `ffmp
 - Output clips stored in `yyyymmdd` folders based on each clip's recording date
 - Encoded files are saved alongside a log as `<original>_av1.mp4`
 - Uses video metadata `creation_time` when available for folder naming
-- Optional deletion of the originals after verification
+- Optional deletion of the originals after verification (set `KEEP_ORIGINALS=1` to preserve)
 - Desktop notifications with progress information
 
 ## Requirements
@@ -39,7 +39,11 @@ The script deletes the original files once the new versions are confirmed. For t
 5. A log file is created in the output directory summarizing the run.
 
 ## Customization
-The first argument to `shortcuts.sh` is the destination folder. When running from Shortcuts, leave this argument blank to display the folder picker, or supply a path (e.g. `/Users/me/BodycamAV1`) before the *Shortcut Input* variable to use a fixed location. Adjust the encoding parameters in the script as needed for your workflow.
+The first argument to `shortcuts.sh` is the destination folder. When running from Shortcuts, leave this argument blank to display the folder picker, or supply a path (e.g. `/Users/me/BodycamAV1`) before the *Shortcut Input* variable to use a fixed location.
+
+Set `KEEP_ORIGINALS=1` to preserve the source clips instead of deleting them once the AV1 versions are created. The originals are removed by default only after each new file is verified.
+
+Adjust the encoding parameters in the script as needed for your workflow.
 
 ## Testing
 An integration test script for macOS is provided as `macos-test.sh`. It runs
