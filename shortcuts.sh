@@ -26,6 +26,7 @@ creation_epoch_for() {
     # Remove fractional seconds and normalize timezone offsets for BSD date
     meta=$(echo "$meta" | \
       sed -E 's/\.[0-9]+(Z|[+-][0-9:]+)$/\1/' | \
+      sed -E 's/Z$/+0000/' | \
       sed -E 's/([+-][0-9]{2}):([0-9]{2})$/\1\2/')
     if date -j -f "%Y-%m-%dT%H:%M:%S%z" "$meta" +%s 2>/dev/null; then
       return

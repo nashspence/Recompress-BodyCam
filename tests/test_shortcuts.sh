@@ -51,7 +51,6 @@ if [[ "$1" == "-j" && "$2" == "-f" ]]; then
   shift 2
   format="$1"; shift
   value="$1"; shift
-  value="${value%Z}"
   value="${value%.*}"
   /usr/bin/date -d "$value" +%s
 elif [[ "$1" == "-r" ]]; then
