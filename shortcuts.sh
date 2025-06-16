@@ -8,8 +8,11 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 # Set KEEP_ORIGINALS=1 to preserve source files
 KEEP_ORIGINALS="${KEEP_ORIGINALS:-0}"
+# Set DISABLE_UI=1 in CI environments to skip osascript calls
+DISABLE_UI="${DISABLE_UI:-0}"
 
 notify() {
+  [[ "$DISABLE_UI" == "1" ]] && return
   osascript -e "display notification \"$*\" with title \"BodyCam Re-encode\""
 }
 
@@ -20,8 +23,11 @@ creation_epoch_for() {
   local meta
   meta=$(ffprobe -v quiet -show_entries format_tags=creation_time -of default=noprint_wrappers=1:nokey=1 "$f" 2>/dev/null | head -n 1 || true)
   if [[ -n "$meta" ]]; then
-    meta="${meta%Z}"
-    meta="${meta%.*}"
+    # Remove fractional seconds and normalize timezone offsets for BSD date
+    meta=$(echo "$meta" | \
+      sed -E 's/\.[0-9]+(Z|[+-][0-9:]+)$/\1/' | \
+      sed -E 's/Z$/+0000/' | \
+      sed -E 's/([+-][0-9]{2}):([0-9]{2})$/\1\2/')
     if date -j -f "%Y-%m-%dT%H:%M:%S%z" "$meta" +%s 2>/dev/null; then
       return
     fi
@@ -50,7 +56,9 @@ fi
 LOGFILE="$out_root/BodyCam-Reencode-$(date +'%Y%m%dT%H%M%S').log"
 touch "$LOGFILE" 2>/dev/null || { echo "❌ Cannot write to log file '$LOGFILE'." >&2; exit 1; }
 exec 2>>"$LOGFILE"
-osascript -e "tell application \"Terminal\" to do script \"tail -f '$LOGFILE'\""
+if [[ "$DISABLE_UI" != "1" ]]; then
+  osascript -e "tell application \"Terminal\" to do script \"tail -f '$LOGFILE'\""
+fi
 echo "▶ Script started at $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >&2
 trap 'ret=$?; echo "▶ Script exited with code $ret at $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >&2' EXIT
 # ───────────────────────────────────────────────────────────────────────────────
