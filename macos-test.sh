@@ -11,8 +11,12 @@ cleanup() { rm -rf "$tmpdir" "$outdir_keep" "$outdir_del"; }
 trap cleanup EXIT
 
 # Generate two 1‑second sample clips with different metadata
-ffmpeg -f lavfi -i testsrc=size=320x240:duration=1 -metadata creation_time="2024-01-01T12:00:00Z" -c:v libx264 -t 1 "$tmpdir/in1.mov" -y >/dev/null 2>&1
-ffmpeg -f lavfi -i testsrc=size=320x240:duration=1 -metadata creation_time="2024-01-02T12:00:00Z" -c:v libx264 -t 1 "$tmpdir/in2.mov" -y >/dev/null 2>&1
+ffmpeg -f lavfi -i testsrc=size=320x240:duration=1 -f lavfi -i sine=frequency=440:duration=1 \
+  -metadata creation_time="2024-01-01T12:00:00Z" -c:v libx264 -c:a aac -shortest \
+  "$tmpdir/in1.mov" -y >/dev/null 2>&1
+ffmpeg -f lavfi -i testsrc=size=320x240:duration=1 -f lavfi -i sine=frequency=440:duration=1 \
+  -metadata creation_time="2024-01-02T12:00:00Z" -c:v libx264 -c:a aac -shortest \
+  "$tmpdir/in2.mov" -y >/dev/null 2>&1
 
 # Run the script directly with the output directory
 KEEP_ORIGINALS=1 zsh shortcuts.sh "$outdir_keep" "$tmpdir/in1.mov" "$tmpdir/in2.mov"
