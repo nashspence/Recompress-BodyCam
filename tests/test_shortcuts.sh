@@ -75,11 +75,11 @@ ffmpeg -f lavfi -i testsrc=size=320x240:duration=1 -f lavfi -i sine=frequency=44
 # ---------------------------------------------------------------------
 # Run once preserving originals
 # ---------------------------------------------------------------------
-(cd "$root_dir" && KEEP_ORIGINALS=1 zsh shortcuts.sh "$outdir_keep" "$tmpdir/in1.mov" "$tmpdir/in2.mov")
+(cd "$root_dir" && KEEP_ORIGINALS=1 DISABLE_UI=1 zsh shortcuts.sh "$outdir_keep" "$tmpdir/in1.mov" "$tmpdir/in2.mov")
 
 # Run again with default deletion behaviour
 # ---------------------------------------------------------------------
-(cd "$root_dir" && zsh shortcuts.sh "$outdir_del" "$tmpdir/in1.mov" "$tmpdir/in2.mov")
+(cd "$root_dir" && DISABLE_UI=1 zsh shortcuts.sh "$outdir_del" "$tmpdir/in1.mov" "$tmpdir/in2.mov")
 
 # ---------------------------------------------------------------------
 # Verify output files were created in dated subfolders
