@@ -3,13 +3,12 @@
 A macOS Shortcuts Quick Action that re‑encodes body camera footage using `ffmpeg`. Each selected clip becomes an AV1 file with Opus audio and is stored in a dated `yyyymmdd` folder. The date comes from the clip's `creation_time` metadata when present, or else from the file creation time. Tested on **macOS 15.5 (24F74)**.
 
 ## Features
-- Fast AV1 (`libsvtav1`) video encoding
-- Compact `libopus` audio
-- Output clips stored in `yyyymmdd` folders based on each clip's recording date
-- Encoded files are saved alongside a log as `<original>_av1.mp4`
-- Uses video metadata `creation_time` when available for folder naming
-- Optional deletion of the originals after verification (set `KEEP_ORIGINALS=1` to preserve)
-- Desktop notifications with progress information
+- [**creates output files**](tests/test_shortcuts.sh#L87-L96) — writes `<original>_av1.mp4` in a `yyyymmdd` folder
+  next to the log file.
+- [**removes originals after second run**](tests/test_shortcuts.sh#L98-L104) — deletes the source clips once
+  the new versions are verified.
+- [**writes log files**](tests/test_shortcuts.sh#L106-L114) — records a summary of each run in the output
+  directory.
 
 ## Requirements
 - macOS 15.5 or newer
