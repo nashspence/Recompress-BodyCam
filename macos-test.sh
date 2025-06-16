@@ -20,7 +20,7 @@ ffmpeg -f lavfi -i testsrc=size=320x240:duration=1 -f lavfi -i sine=frequency=44
 
 # Run the script directly with the output directory. If the command fails, dump
 # any generated log file to help diagnose the issue.
-KEEP_ORIGINALS=1 zsh shortcuts.sh "$outdir_keep" "$tmpdir/in1.mov" "$tmpdir/in2.mov" || {
+KEEP_ORIGINALS=1 DISABLE_UI=1 zsh shortcuts.sh "$outdir_keep" "$tmpdir/in1.mov" "$tmpdir/in2.mov" || {
   echo "❌ shortcuts.sh failed during KEEP_ORIGINALS run" >&2
   log=$(find "$outdir_keep" -maxdepth 1 -name '*.log' | head -n 1 || true)
   [[ -f "$log" ]] && { echo "----- Log from KEEP_ORIGINALS run -----"; cat "$log"; echo "---------------------------------------"; }
@@ -32,7 +32,7 @@ else
   echo "❌ Originals missing after KEEP_ORIGINALS run" >&2
   exit 1
 fi
-zsh shortcuts.sh "$outdir_del" "$tmpdir/in1.mov" "$tmpdir/in2.mov" || {
+DISABLE_UI=1 zsh shortcuts.sh "$outdir_del" "$tmpdir/in1.mov" "$tmpdir/in2.mov" || {
   echo "❌ shortcuts.sh failed during deletion run" >&2
   log=$(find "$outdir_del" -maxdepth 1 -name '*.log' | head -n 1 || true)
   [[ -f "$log" ]] && { echo "----- Log from deletion run -----"; cat "$log"; echo "--------------------------------"; }
