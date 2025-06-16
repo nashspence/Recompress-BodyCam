@@ -6,6 +6,9 @@ caffeinate -dimsu -w $$ &
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
+# Set KEEP_ORIGINALS=1 to preserve source files
+KEEP_ORIGINALS="${KEEP_ORIGINALS:-0}"
+
 notify() {
   osascript -e "display notification \"$*\" with title \"BodyCam Re-encode\""
 }
@@ -82,8 +85,10 @@ for file_i in "${FILES[@]}"; do
     "$outpath"
   [[ -f "$outpath" ]] || { echo "❌ Error: transcoded file '$outpath' not found." >&2; exit 1; }
 
-  # Delete the original file once the encode is confirmed
-  rm "$file_i" || echo "⚠️ Could not delete original '$file_i'." >&2
+  # Delete the original file once the encode is confirmed unless KEEP_ORIGINALS=1
+  if [[ "$KEEP_ORIGINALS" != "1" ]]; then
+    rm "$file_i" || echo "⚠️ Could not delete original '$file_i'." >&2
+  fi
 
   (( index++ ))
 done
@@ -93,7 +98,11 @@ echo "▶ Transcoding complete. Generated files:" >&1
 find "$out_root" -name '*_av1.mp4' -print | sed 's/^/    /'
 echo "" >&1
 
-notify "Deleted original files; re-encoded clips are in subfolders"
+if [[ "$KEEP_ORIGINALS" == "1" ]]; then
+  notify "Original files preserved; re-encoded clips are in subfolders"
+else
+  notify "Deleted original files; re-encoded clips are in subfolders"
+fi
 echo "--------------------------------------" >>"$LOGFILE"
 echo "Completed successfully at $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >>"$LOGFILE"
 echo "Log file is: $LOGFILE" >>"$LOGFILE"
