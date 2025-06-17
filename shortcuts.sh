@@ -17,16 +17,16 @@ detect_low_motion() {
   local min_len="${LOW_MOTION_MIN_LEN:-20}"
   tmp=$(mktemp)
   ffmpeg -hide_banner -loglevel info -i "$input" \
-    -vf "select='lt(scene,${sad_thresh})',metadata=print:file=$tmp" \
+    -vf "select='gte(n,1)*lt(scene,${sad_thresh})',metadata=print:file=$tmp" \
     -vsync 0 -an -f null - >/dev/null 2>&1 || true
   duration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$input")
-  awk -v dur="$duration" -v min_len="$min_len" '
+  awk -v dur="$duration" -v min_len="$min_len" -v gap=0.5 '
     {
       if ($0 ~ /pts_time:[0-9.]+/) {
-        match($0, /pts_time:[0-9.]+/)
-        t = substr($0, RSTART + 9, RLENGTH - 9)
+        match($0, /pts_time:([0-9.]+)/, a)
+        t = a[1]
         if (start == "") start = t
-        if (prev != "" && t - prev > 1) {
+        if (prev != "" && t - prev > gap) {
           if (prev - start >= min_len) print start ":" prev
           start = t
         }
