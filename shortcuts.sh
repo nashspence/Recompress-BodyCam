@@ -2,7 +2,9 @@
 set -eux
 
 # Prevent macOS from sleeping while this script runs
-caffeinate -dimsu -w $$ &
+if command -v caffeinate >/dev/null 2>&1; then
+  caffeinate -dimsu -w $$ &
+fi
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
@@ -19,18 +21,21 @@ detect_low_motion() {
     -vsync 0 -an -f null - >/dev/null 2>&1 || true
   duration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$input")
   awk -v dur="$duration" -v min_len="$min_len" '
-    /pts_time:/ {
-      split($NF,a,":"); t=a[2];
-      if (start=="") start=t;
-      if (prev!="" && t-prev>1) {
-        if (prev-start>=min_len) print start":"prev;
-        start=t
+    {
+      if (match($0, /pts_time:([0-9.]+)/, m)) {
+        t=m[1]
+        if (start=="") start=t
+        if (prev!="" && t-prev>1) {
+          if (prev-start>=min_len) print start":"prev
+          start=t
+        }
+        prev=t
+        last=t
       }
-      prev=t; last=t
     }
     END {
       if (prev!="" && last-start>=min_len) {
-        end = (last<dur ? last : dur);
+        end = (last<dur ? last : dur)
         print start":"end
       }
     }
