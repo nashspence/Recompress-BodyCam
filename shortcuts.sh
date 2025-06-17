@@ -26,11 +26,12 @@ iso_utc() {
 # `creation_time`. Video resumes in numbered parts with adjusted timestamps.
 encode_with_low_motion() {
   local input="$1" output="$2" base_epoch="$3"
-  local width height duration freezes start end prev seg_idx freeze_idx part
+  local width height duration start end prev seg_idx freeze_idx part
   width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$input")
   height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 "$input")
   duration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$input")
-  mapfile -t freezes < <(detect_freezes "$input")
+  local -a freezes
+  IFS=$'\n' freezes=($(detect_freezes "$input"))
 
   local base="${output%.*}" ext="${output##*.}"
   prev=0
