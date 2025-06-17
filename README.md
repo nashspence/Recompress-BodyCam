@@ -9,7 +9,7 @@ A macOS Shortcuts Quick Action that re‑encodes body camera footage using `ffmp
   the new versions are verified.
  - [**writes log files**](tests/test_shortcuts.sh#L50-L58) — records a summary of each run in the output
   directory.
- - [**audio only for low motion**](tests/test_audio_only_for_low_motion.sh#L11-L27) — segments with minimal movement are split into audio-only files
+ - [**audio only for low motion**](tests/test_audio_only_for_low_motion.sh#L11-L34) — segments with minimal movement are split into audio-only files
 
 ## Requirements
 - macOS 15.5 or newer
@@ -44,6 +44,10 @@ The first argument to `shortcuts.sh` is the destination folder. When running fro
 Set `KEEP_ORIGINALS=1` to preserve the source clips instead of deleting them once the AV1 versions are created. The originals are removed by default only after each new file is verified.
 
 Adjust the encoding parameters in the script as needed for your workflow.
+
+Set `LOW_MOTION_SAD` to modify the scene-change sensitivity when detecting low
+motion. Adjust `LOW_MOTION_MIN_LEN` (in seconds) to control how long a
+low-motion span must be before it's extracted as audio only.
 
 ## Testing
 An integration test script for macOS is provided as `macos-test.sh`. It runs
