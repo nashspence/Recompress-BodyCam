@@ -9,10 +9,16 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 # Detect low-motion segments using ffmpeg's freezedetect filter. Any freeze
 # longer than 20 seconds is returned as "start:end" pairs on stdout.
 detect_freezes() {
-  local input="$1" log tmp
+  local input="$1" tmp duration
   tmp=$(mktemp)
-  ffmpeg -v warning -i "$input" -vf freezedetect=n=0.003:d=20 -an -f null - 2>"$tmp" || true
-  awk '/freeze_start/ {start=$NF} /freeze_end/ {print start":"$NF}' "$tmp"
+  ffmpeg -hide_banner -loglevel info -i "$input" \
+    -vf freezedetect=n=0.003:d=20 -an -f null - 2>"$tmp" || true
+  duration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$input")
+  awk -v dur="$duration" '
+    /freeze_start/ {start=$NF}
+    /freeze_end/   {print start":"$NF; start=""}
+    END { if (start != "") print start":"dur }
+  ' "$tmp"
   rm -f "$tmp"
 }
 
@@ -47,6 +53,7 @@ encode_with_low_motion() {
         -compression_level 10 -application audio \
         -frame_duration 40 -ar 24000 -ac 1 -cutoff 12000 \
       -metadata creation_time="$(iso_utc "$base_epoch")" \
+      -movflags use_metadata_tags \
       -c:s copy -c:d copy "$output"
     return
   fi
@@ -65,16 +72,16 @@ encode_with_low_motion() {
           -compression_level 10 -application audio \
           -frame_duration 40 -ar 24000 -ac 1 -cutoff 12000 \
         -metadata creation_time="$(iso_utc $(printf '%.0f' $(echo "$base_epoch + $prev" | bc -l)))" \
+        -movflags use_metadata_tags \
         -c:s copy -c:d copy "$part"
       seg_idx=$((seg_idx+1))
     fi
 
     ffmpeg -hide_banner -loglevel warning -stats -y \
       -ss "$start" -to "$end" -i "$input" -vn \
-      -c:a libopus -b:a 28k -vbr on \
-        -compression_level 10 -application audio \
-        -frame_duration 40 -ar 24000 -ac 1 -cutoff 12000 \
+      -c:a aac -b:a 32k \
       -metadata creation_time="$(iso_utc $(printf '%.0f' $(echo "$base_epoch + $start" | bc -l)))" \
+      -movflags use_metadata_tags \
       "${base}_freeze${freeze_idx}.m4a"
     freeze_idx=$((freeze_idx+1))
     prev=$end
@@ -91,6 +98,7 @@ encode_with_low_motion() {
         -compression_level 10 -application audio \
         -frame_duration 40 -ar 24000 -ac 1 -cutoff 12000 \
       -metadata creation_time="$(iso_utc $(printf '%.0f' $(echo "$base_epoch + $prev" | bc -l)))" \
+      -movflags use_metadata_tags \
       -c:s copy -c:d copy "$part"
   fi
 }

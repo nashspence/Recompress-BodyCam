@@ -9,7 +9,7 @@ A macOS Shortcuts Quick Action that re‑encodes body camera footage using `ffmp
   the new versions are verified.
  - [**writes log files**](tests/test_shortcuts.sh#L50-L58) — records a summary of each run in the output
   directory.
- - [**audio only for low motion**](tests/test_audio_only_for_low_motion.sh#L11-L26) — segments with minimal movement are split into audio-only files
+ - [**audio only for low motion**](tests/test_audio_only_for_low_motion.sh#L11-L27) — segments with minimal movement are split into audio-only files
 
 ## Requirements
 - macOS 15.5 or newer

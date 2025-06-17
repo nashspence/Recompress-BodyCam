@@ -15,7 +15,7 @@ ffmpeg -f lavfi -i testsrc=size=320x240:rate=30:duration=1 -f lavfi -i color=bla
 
  (cd "$root_dir" && DISABLE_UI=1 zsh shortcuts.sh "$outdir" "$tmpdir/in.mov")
 
- audiofile=$(find "$outdir" -name '*freeze1.m4a' | head -n 1)
+audiofile=$(find "$outdir" -name '*freeze1.m4a' | head -n 1)
  videofile=$(find "$outdir" -name '*_av1.mp4' | head -n 1)
  audio_ct=$(ffprobe -v quiet -show_entries format_tags=creation_time -of csv=p=0 "$audiofile")
  video_ct=$(ffprobe -v quiet -show_entries format_tags=creation_time -of csv=p=0 "$videofile")
