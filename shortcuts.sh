@@ -22,21 +22,22 @@ detect_low_motion() {
   duration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$input")
   awk -v dur="$duration" -v min_len="$min_len" '
     {
-      if (match($0, /pts_time:([0-9.]+)/, m)) {
-        t=m[1]
-        if (start=="") start=t
-        if (prev!="" && t-prev>1) {
-          if (prev-start>=min_len) print start":"prev
-          start=t
+      if ($0 ~ /pts_time:[0-9.]+/) {
+        match($0, /pts_time:[0-9.]+/)
+        t = substr($0, RSTART + 9, RLENGTH - 9)
+        if (start == "") start = t
+        if (prev != "" && t - prev > 1) {
+          if (prev - start >= min_len) print start ":" prev
+          start = t
         }
-        prev=t
-        last=t
+        prev = t
+        last = t
       }
     }
     END {
-      if (prev!="" && last-start>=min_len) {
-        end = (last<dur ? last : dur)
-        print start":"end
+      if (prev != "" && last - start >= min_len) {
+        end = (last < dur ? last : dur)
+        print start ":" end
       }
     }
   ' "$tmp"
