@@ -17,7 +17,7 @@ detect_low_motion() {
   local min_len="${LOW_MOTION_MIN_LEN:-20}"
   tmp=$(mktemp)
   ffmpeg -hide_banner -loglevel info -i "$input" \
-    -vf "select='gte(n,1)*lt(scene,${sad_thresh})',metadata=print:file=$tmp" \
+    -vf "select='gte(t,1)*lt(scene,${sad_thresh})',metadata=print:file=$tmp" \
     -vsync 0 -an -f null - >/dev/null 2>&1 || true
   duration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$input")
   awk -v dur="$duration" -v min_len="$min_len" -v gap=0.5 '
@@ -44,7 +44,11 @@ detect_low_motion() {
 
 # Convert an epoch timestamp to an ISO 8601 string in UTC.
 iso_utc() {
-  date -u -r "$1" +"%Y-%m-%dT%H:%M:%SZ"
+  if date -u -r "$1" +"%Y-%m-%dT%H:%M:%SZ" >/dev/null 2>&1; then
+    date -u -r "$1" +"%Y-%m-%dT%H:%M:%SZ"
+  else
+    date -u -d "@$1" +"%Y-%m-%dT%H:%M:%SZ"
+  fi
 }
 
 # Encode a file while splitting low-motion segments into audio-only files. Any
@@ -150,7 +154,11 @@ creation_epoch_for() {
       return
     fi
   fi
-  stat -f %B "$f"
+  if stat -f %B "$f" >/dev/null 2>&1; then
+    stat -f %B "$f"
+  else
+    stat -c %Y "$f"
+  fi
 }
 
 out_root="${1:-}"
@@ -190,7 +198,11 @@ notify "Re-encoding ${#FILES[@]} clips…"
 index=1
 for file_i in "${FILES[@]}"; do
   creation_epoch=$(creation_epoch_for "$file_i")
-  datepart=$(date -r "$creation_epoch" +"%Y%m%d")
+  if date -r "$creation_epoch" +"%Y%m%d" >/dev/null 2>&1; then
+    datepart=$(date -r "$creation_epoch" +"%Y%m%d")
+  else
+    datepart=$(date -d "@$creation_epoch" +"%Y%m%d")
+  fi
   target_dir="$out_root/$datepart"
   mkdir -p "$target_dir"
   base_name="${file_i##*/}"
