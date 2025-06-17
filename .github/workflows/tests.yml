@@ -7,12 +7,14 @@ on:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg zsh
-      - name: Run test script
+          brew update
+          brew install ffmpeg
+      - name: Run test_shortcuts.sh
         run: bash tests/test_shortcuts.sh
+      - name: Run test_audio_only_for_low_motion.sh
+        run: bash tests/test_audio_only_for_low_motion.sh

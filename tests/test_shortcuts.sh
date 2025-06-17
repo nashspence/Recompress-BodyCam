@@ -7,63 +7,8 @@ root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 tmpdir=$(mktemp -d)
 outdir_keep=$(mktemp -d)
 outdir_del=$(mktemp -d)
-mockbin=$(mktemp -d)
-cleanup() { rm -rf "$tmpdir" "$outdir_keep" "$outdir_del" "$mockbin"; }
+cleanup() { rm -rf "$tmpdir" "$outdir_keep" "$outdir_del"; }
 trap cleanup EXIT
-
-# ---------------------------------------------------------------------
-# Create stub utilities that exist on macOS only
-# ---------------------------------------------------------------------
-cat >"$mockbin/caffeinate" <<'EOS'
-#!/usr/bin/env bash
-exit 0
-EOS
-chmod +x "$mockbin/caffeinate"
-
-cat >"$mockbin/osascript" <<'EOS'
-#!/usr/bin/env bash
-# Provide minimal behaviour for notifications and choose folder dialogs
-if [[ "$1" == "-e" ]]; then
-  if grep -q 'POSIX path of (choose folder' <<<"$2"; then
-    echo "/tmp"
-  fi
-  exit 0
-fi
-exit 0
-EOS
-chmod +x "$mockbin/osascript"
-
-cat >"$mockbin/stat" <<'EOS'
-#!/usr/bin/env bash
-if [[ "$1" == "-f" && "$2" == "%B" ]]; then
-  shift 2
-  /usr/bin/stat -c %Y "$1"
-else
-  /usr/bin/stat "$@"
-fi
-EOS
-chmod +x "$mockbin/stat"
-
-cat >"$mockbin/date" <<'EOS'
-#!/usr/bin/env bash
-# Emulate BSD date flags used by shortcuts.sh
-if [[ "$1" == "-j" && "$2" == "-f" ]]; then
-  shift 2
-  format="$1"; shift
-  value="$1"; shift
-  value="${value%.*}"
-  /usr/bin/date -d "$value" +%s
-elif [[ "$1" == "-r" ]]; then
-  shift
-  sec="$1"; shift
-  /usr/bin/date -d "@$sec" "$@"
-else
-  /usr/bin/date "$@"
-fi
-EOS
-chmod +x "$mockbin/date"
-
-export PATH="$mockbin:$PATH"
 
 # ---------------------------------------------------------------------
 # Generate sample videos with metadata and audio

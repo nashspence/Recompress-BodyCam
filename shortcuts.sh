@@ -6,6 +6,94 @@ caffeinate -dimsu -w $$ &
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
+# Detect low-motion segments using ffmpeg's freezedetect filter. Any freeze
+# longer than 20 seconds is returned as "start:end" pairs on stdout.
+detect_freezes() {
+  local input="$1" log tmp
+  tmp=$(mktemp)
+  ffmpeg -v warning -i "$input" -vf freezedetect=n=0.003:d=20 -an -f null - 2>"$tmp" || true
+  awk '/freeze_start/ {start=$NF} /freeze_end/ {print start":"$NF}' "$tmp"
+  rm -f "$tmp"
+}
+
+# Convert an epoch timestamp to an ISO 8601 string in UTC.
+iso_utc() {
+  date -u -r "$1" +"%Y-%m-%dT%H:%M:%SZ"
+}
+
+# Encode a file while splitting low-motion segments into audio-only files. Each
+# freeze longer than 20 seconds becomes its own `.m4a` file with accurate
+# `creation_time`. Video resumes in numbered parts with adjusted timestamps.
+encode_with_low_motion() {
+  local input="$1" output="$2" base_epoch="$3"
+  local width height duration freezes start end prev seg_idx freeze_idx part
+  width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$input")
+  height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 "$input")
+  duration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$input")
+  mapfile -t freezes < <(detect_freezes "$input")
+
+  local base="${output%.*}" ext="${output##*.}"
+  prev=0
+  seg_idx=1
+  freeze_idx=1
+
+  if (( ${#freezes[@]} == 0 )); then
+    ffmpeg -hide_banner -loglevel warning -stats -y \
+      -i "$input" \
+      -map 0:v:0 -map 0:a:0 \
+      -c:v libsvtav1 -crf 42 -preset 5 \
+      -c:a libopus -b:a 28k -vbr on \
+        -compression_level 10 -application audio \
+        -frame_duration 40 -ar 24000 -ac 1 -cutoff 12000 \
+      -metadata creation_time="$(iso_utc "$base_epoch")" \
+      -c:s copy -c:d copy "$output"
+    return
+  fi
+
+  for seg in "${freezes[@]}"; do
+    start=${seg%:*}
+    end=${seg#*:}
+    if (( $(echo "$start > $prev" | bc -l) )); then
+      part="$output"
+      [[ $seg_idx -gt 1 ]] && part="${base}_part${seg_idx}.${ext}"
+      ffmpeg -hide_banner -loglevel warning -stats -y \
+        -ss "$prev" -to "$start" -i "$input" \
+        -map 0:v:0 -map 0:a:0 \
+        -c:v libsvtav1 -crf 42 -preset 5 \
+        -c:a libopus -b:a 28k -vbr on \
+          -compression_level 10 -application audio \
+          -frame_duration 40 -ar 24000 -ac 1 -cutoff 12000 \
+        -metadata creation_time="$(iso_utc $(printf '%.0f' $(echo "$base_epoch + $prev" | bc -l)))" \
+        -c:s copy -c:d copy "$part"
+      seg_idx=$((seg_idx+1))
+    fi
+
+    ffmpeg -hide_banner -loglevel warning -stats -y \
+      -ss "$start" -to "$end" -i "$input" -vn \
+      -c:a libopus -b:a 28k -vbr on \
+        -compression_level 10 -application audio \
+        -frame_duration 40 -ar 24000 -ac 1 -cutoff 12000 \
+      -metadata creation_time="$(iso_utc $(printf '%.0f' $(echo "$base_epoch + $start" | bc -l)))" \
+      "${base}_freeze${freeze_idx}.m4a"
+    freeze_idx=$((freeze_idx+1))
+    prev=$end
+  done
+
+  if (( $(echo "$prev < $duration" | bc -l) )); then
+    part="$output"
+    [[ $seg_idx -gt 1 ]] && part="${base}_part${seg_idx}.${ext}"
+    ffmpeg -hide_banner -loglevel warning -stats -y \
+      -ss "$prev" -to "$duration" -i "$input" \
+      -map 0:v:0 -map 0:a:0 \
+      -c:v libsvtav1 -crf 42 -preset 5 \
+      -c:a libopus -b:a 28k -vbr on \
+        -compression_level 10 -application audio \
+        -frame_duration 40 -ar 24000 -ac 1 -cutoff 12000 \
+      -metadata creation_time="$(iso_utc $(printf '%.0f' $(echo "$base_epoch + $prev" | bc -l)))" \
+      -c:s copy -c:d copy "$part"
+  fi
+}
+
 # Set KEEP_ORIGINALS=1 to preserve source files
 KEEP_ORIGINALS="${KEEP_ORIGINALS:-0}"
 # Set DISABLE_UI=1 in CI environments to skip osascript calls
@@ -81,16 +169,7 @@ for file_i in "${FILES[@]}"; do
   outpath="$target_dir/$outname"
 
   echo "[$index/${#FILES[@]}] '$file_i' → '$outpath'" >&1
-  ffmpeg -hide_banner -loglevel warning -stats -y \
-    -i "$file_i" \
-    -map 0:v:0 -map 0:a:0 \
-    -c:v libsvtav1 -crf 42 -preset 5 \
-    -c:a libopus \
-      -b:a 28k -vbr on \
-      -compression_level 10 -application audio \
-      -frame_duration 40 -ar 24000 -ac 1 -cutoff 12000 \
-    -c:s copy -c:d copy \
-    "$outpath"
+  encode_with_low_motion "$file_i" "$outpath" "$creation_epoch"
   [[ -f "$outpath" ]] || { echo "❌ Error: transcoded file '$outpath' not found." >&2; exit 1; }
 
   # Delete the original file once the encode is confirmed unless KEEP_ORIGINALS=1

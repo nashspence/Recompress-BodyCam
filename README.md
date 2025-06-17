@@ -3,12 +3,13 @@
 A macOS Shortcuts Quick Action that re‑encodes body camera footage using `ffmpeg`. Each selected clip becomes an AV1 file with Opus audio and is stored in a dated `yyyymmdd` folder. The date comes from the clip's `creation_time` metadata when present, or else from the file creation time. Tested on **macOS 15.5 (24F74)**.
 
 ## Features
-- [**creates output files**](tests/test_shortcuts.sh#L87-L96) — writes `<original>_av1.mp4` in a `yyyymmdd` folder
+ - [**creates output files**](tests/test_shortcuts.sh#L28-L40) — writes `<original>_av1.mp4` in a `yyyymmdd` folder
   next to the log file.
-- [**removes originals after second run**](tests/test_shortcuts.sh#L98-L104) — deletes the source clips once
+ - [**removes originals after second run**](tests/test_shortcuts.sh#L42-L48) — deletes the source clips once
   the new versions are verified.
-- [**writes log files**](tests/test_shortcuts.sh#L106-L114) — records a summary of each run in the output
+ - [**writes log files**](tests/test_shortcuts.sh#L50-L58) — records a summary of each run in the output
   directory.
+ - [**audio only for low motion**](tests/test_audio_only_for_low_motion.sh#L11-L26) — segments with minimal movement are split into audio-only files
 
 ## Requirements
 - macOS 15.5 or newer
