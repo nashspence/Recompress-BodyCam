@@ -2,9 +2,7 @@
 set -eux
 
 # Prevent macOS from sleeping while this script runs
-if command -v caffeinate >/dev/null 2>&1; then
-  caffeinate -dimsu -w $$ &
-fi
+caffeinate -dimsu -w $$ &
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
