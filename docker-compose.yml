@@ -1,0 +1,5 @@
+version: '3'
+services:
+  test:
+    build: .
+    command: bash -c "tests/test_shortcuts.sh && tests/test_audio_only_for_low_motion.sh"
