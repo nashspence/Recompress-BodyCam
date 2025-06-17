@@ -45,6 +45,10 @@ Set `KEEP_ORIGINALS=1` to preserve the source clips instead of deleting them onc
 
 Adjust the encoding parameters in the script as needed for your workflow.
 
+Set `LOW_MOTION_SAD` to modify the scene-change sensitivity when detecting low
+motion. Adjust `LOW_MOTION_MIN_LEN` (in seconds) to control how long a
+low-motion span must be before it's extracted as audio only.
+
 ## Testing
 An integration test script for macOS is provided as `macos-test.sh`. It runs
 `shortcuts.sh` directly with a temporary clip and verifies that the re‑encoded

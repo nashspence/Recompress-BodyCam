@@ -6,18 +6,34 @@ caffeinate -dimsu -w $$ &
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
-# Detect low-motion segments using ffmpeg's freezedetect filter. Any freeze
-# longer than 20 seconds is returned as "start:end" pairs on stdout.
-detect_freezes() {
+# Detect low-motion segments using ffmpeg's scene score. Both the SAD threshold
+# and minimum segment length can be configured via `LOW_MOTION_SAD` and
+# `LOW_MOTION_MIN_LEN` environment variables.
+detect_low_motion() {
   local input="$1" tmp duration
+  local sad_thresh="${LOW_MOTION_SAD:-0.003}"
+  local min_len="${LOW_MOTION_MIN_LEN:-20}"
   tmp=$(mktemp)
   ffmpeg -hide_banner -loglevel info -i "$input" \
-    -vf freezedetect=n=0.003:d=20 -an -f null - 2>"$tmp" || true
+    -vf "select='lt(scene,${sad_thresh})',metadata=print:file=$tmp" \
+    -vsync 0 -an -f null - >/dev/null 2>&1 || true
   duration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$input")
-  awk -v dur="$duration" '
-    /freeze_start/ {start=$NF}
-    /freeze_end/   {print start":"$NF; start=""}
-    END { if (start != "") print start":"dur }
+  awk -v dur="$duration" -v min_len="$min_len" '
+    /pts_time:/ {
+      split($NF,a,":"); t=a[2];
+      if (start=="") start=t;
+      if (prev!="" && t-prev>1) {
+        if (prev-start>=min_len) print start":"prev;
+        start=t
+      }
+      prev=t; last=t
+    }
+    END {
+      if (prev!="" && last-start>=min_len) {
+        end = (last<dur ? last : dur);
+        print start":"end
+      }
+    }
   ' "$tmp"
   rm -f "$tmp"
 }
@@ -27,24 +43,25 @@ iso_utc() {
   date -u -r "$1" +"%Y-%m-%dT%H:%M:%SZ"
 }
 
-# Encode a file while splitting low-motion segments into audio-only files. Each
-# freeze longer than 20 seconds becomes its own `.m4a` file with accurate
-# `creation_time`. Video resumes in numbered parts with adjusted timestamps.
+# Encode a file while splitting low-motion segments into audio-only files. Any
+# span of minimal movement lasting at least `LOW_MOTION_MIN_LEN` seconds becomes
+# its own `.m4a` file with accurate `creation_time`. Video resumes in numbered
+# parts with adjusted timestamps.
 encode_with_low_motion() {
   local input="$1" output="$2" base_epoch="$3"
-  local width height duration start end prev seg_idx freeze_idx part
+  local width height duration start end prev seg_idx low_idx part
   width=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$input")
   height=$(ffprobe -v error -select_streams v:0 -show_entries stream=height -of csv=p=0 "$input")
   duration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$input")
-  local -a freezes
-  IFS=$'\n' freezes=($(detect_freezes "$input"))
+  local -a low_segments
+  IFS=$'\n' low_segments=($(detect_low_motion "$input"))
 
   local base="${output%.*}" ext="${output##*.}"
   prev=0
   seg_idx=1
-  freeze_idx=1
+  low_idx=1
 
-  if (( ${#freezes[@]} == 0 )); then
+  if (( ${#low_segments[@]} == 0 )); then
     ffmpeg -hide_banner -loglevel warning -stats -y \
       -i "$input" \
       -map 0:v:0 -map 0:a:0 \
@@ -58,7 +75,7 @@ encode_with_low_motion() {
     return
   fi
 
-  for seg in "${freezes[@]}"; do
+  for seg in "${low_segments[@]}"; do
     start=${seg%:*}
     end=${seg#*:}
     if (( $(echo "$start > $prev" | bc -l) )); then
@@ -82,8 +99,8 @@ encode_with_low_motion() {
       -c:a aac -b:a 32k \
       -metadata creation_time="$(iso_utc $(printf '%.0f' $(echo "$base_epoch + $start" | bc -l)))" \
       -movflags use_metadata_tags \
-      "${base}_freeze${freeze_idx}.m4a"
-    freeze_idx=$((freeze_idx+1))
+      "${base}_lowmotion${low_idx}.m4a"
+    low_idx=$((low_idx+1))
     prev=$end
   done
 
