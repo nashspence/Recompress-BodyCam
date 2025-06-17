@@ -21,18 +21,16 @@ detect_low_motion() {
     -vsync 0 -an -f null - >/dev/null 2>&1 || true
   duration=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$input")
   awk -v dur="$duration" -v min_len="$min_len" -v gap=0.5 '
-    {
-      if ($0 ~ /pts_time:[0-9.]+/) {
-        match($0, /pts_time:([0-9.]+)/, a)
-        t = a[1]
-        if (start == "") start = t
-        if (prev != "" && t - prev > gap) {
-          if (prev - start >= min_len) print start ":" prev
-          start = t
-        }
-        prev = t
-        last = t
+    /pts_time:/ {
+      sub(/^.*pts_time:/, "")
+      t = $0
+      if (start == "") start = t
+      if (prev != "" && t - prev > gap) {
+        if (prev - start >= min_len) print start ":" prev
+        start = t
       }
+      prev = t
+      last = t
     }
     END {
       if (prev != "" && last - start >= min_len) {
